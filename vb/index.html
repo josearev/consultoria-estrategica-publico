@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Auditoría de Fuga de Capital Operativo — Sergio Arévalo</title>
+<meta name="description" content="Descubre cuánto dinero pierdes siendo el cuello de botella de tu empresa. Auditoría estratégica interactiva." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #1B2D42;
+  --gold: #C9952A;
+  --accent: #E8B84B;
+  --cream: #F8F6F1;
+  --white: #FFFFFF;
+  --text: #2C2C2C;
+  --border: #E5E2DC;
+  --slate: #475569;
+  --light-gray: #F1F5F9;
+  --red: #e11d48;
+  --green: #10b981;
+}
+
+html, body {
+  min-height: 100%;
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  background: #1a2535;
+  scroll-behavior: smooth;
+}
+
+#wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px 64px;
+}
+
+#app {
+  width: 100%;
+  max-width: 520px;
+  background: var(--cream);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 32px 100px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+.screen { display: none; }
+.screen.active { display: block; animation: fadeIn .35s ease-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── LANDING ─────────────────────────────────── */
+#sl {
+  background: var(--navy);
+  padding: 3.5rem 2rem 4rem;
+  text-align: center;
+  color: white;
+}
+.brand { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 2.5rem; font-weight: 700; }
+.brand-sub { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 6px; letter-spacing: 1.5px; font-weight: 400; }
+.time-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(201,149,42,0.15); border: 1px solid rgba(201,149,42,0.3); border-radius: 24px; padding: 6px 18px; font-size: 12px; color: var(--accent); margin-bottom: 2rem; font-weight: 500; }
+.land-title { font-family: 'IBM Plex Serif', Georgia, serif; font-size: clamp(24px, 6vw, 34px); font-weight: 700; line-height: 1.2; color: white; margin-bottom: 1.2rem; }
+.land-sub { font-size: 15px; color: rgba(255,255,255,0.55); line-height: 1.65; margin-bottom: 2.5rem; max-width: 360px; margin-left: auto; margin-right: auto; }
+.btn-main { background: var(--gold); color: white; border: none; padding: 18px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; max-width: 360px; font-family: 'Inter', sans-serif; transition: all .2s; letter-spacing: .5px; box-shadow: 0 8px 24px rgba(201,149,42,0.3); }
+.btn-main:hover { background: var(--accent); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(201,149,42,0.4); }
+.btn-main:active { transform: translateY(0); }
+.land-disc { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 1.2rem; letter-spacing: 0.5px; }
+
+/* ── QUESTIONS ───────────────────────────────── */
+#sq { background: var(--cream); }
+.q-hero { background: var(--navy); padding: 1.5rem 1.5rem 2rem; text-align: center; color: white; }
+.q-hero-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.q-prog { font-size: 12px; color: rgba(255,255,255,0.45); font-weight: 600; }
+.q-exit { font-size: 12px; color: rgba(255,255,255,0.35); background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; padding: 6px 10px; border-radius: 6px; }
+
+.ls-lbl { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+.ls-amt { font-family: 'IBM Plex Serif', Georgia, serif; font-size: clamp(32px, 9vw, 48px); font-weight: 700; color: white; line-height: 1; margin-bottom: 6px; transition: color .4s; }
+.ls-amt.zero { color: rgba(255,255,255,0.2); }
+.ls-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 1.25rem; }
+
+.pbar { height: 3px; background: rgba(27,45,66,0.1); }
+.pfill { height: 3px; background: var(--gold); transition: width .4s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.q-body { padding: 2rem 1.5rem 2.5rem; }
+.q-num-lbl { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--gold); text-transform: uppercase; margin-bottom: .75rem; }
+.q-txt { font-family: 'IBM Plex Serif', Georgia, serif; font-size: clamp(18px, 5vw, 22px); font-weight: 700; color: var(--navy); line-height: 1.35; margin-bottom: .6rem; }
+.q-hlp { font-size: 13px; color: #888; font-style: italic; margin-bottom: 1.75rem; line-height: 1.6; }
+
+.opts { display: flex; flex-direction: column; gap: 10px; }
+.opt { display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: white; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; text-align: left; width: 100%; font-family: 'Inter', sans-serif; transition: all .15s; }
+.opt:hover { border-color: var(--gold); background: #fffdf9; transform: translateX(4px); }
+.opt.sel { border-color: var(--gold); background: rgba(201,149,42,0.06); }
+.opt-radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.opt.sel .opt-radio { border-color: var(--gold); background: var(--gold); }
+.opt.sel .opt-radio::after { content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; display: block; }
+.opt-lbl { font-size: 15px; color: var(--text); font-weight: 500; line-height: 1.4; }
+.opt-lbl small { display: block; font-size: 12px; color: #999; margin-top: 2px; font-weight: 400; }
+
+.num-wrap { display: flex; align-items: center; border: 2px solid var(--border); border-radius: 12px; background: white; overflow: hidden; transition: border-color .2s; }
+.num-wrap:focus-within { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(201,149,42,0.1); }
+.num-pre { padding: 16px 10px 16px 20px; font-size: 20px; font-weight: 700; color: var(--gold); }
+.num-wrap input { border: none; outline: none; flex: 1; padding: 16px 16px 16px 0; font-size: 20px; font-weight: 700; color: var(--navy); background: transparent; width: 100%; font-family: 'Inter', sans-serif; }
+
+/* ── CAPTURE ─────────────────────────────────── */
+#sc { background: var(--cream); }
+.cap-hero { background: var(--navy); padding: 2.5rem 1.5rem 2.25rem; text-align: center; color: white; }
+.cap-teaser { font-size: 14px; color: rgba(255,255,255,0.5); margin-bottom: .5rem; letter-spacing: 1px; text-transform: uppercase; }
+.cap-amt { font-family: 'IBM Plex Serif', Georgia, serif; font-size: clamp(34px, 9vw, 52px); font-weight: 700; color: white; margin-bottom: .5rem; }
+.cap-sub { font-size: 13px; color: rgba(255,255,255,0.4); }
+
+.cap-body { padding: 2rem 1.5rem 2.5rem; }
+.cap-title { font-size: 19px; font-weight: 700; color: var(--navy); margin-bottom: .5rem; }
+.cap-desc { font-size: 14px; color: #777; margin-bottom: 2rem; line-height: 1.6; }
+
+.flbl { display: block; font-size: 12px; font-weight: 700; color: var(--navy); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+.finp { width: 100%; padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; background: white; color: var(--text); outline: none; font-family: 'Inter', sans-serif; transition: all .2s; margin-bottom: 18px; }
+.finp:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(201,149,42,0.1); }
+
+.wa-row { display: flex; gap: 10px; margin-bottom: 6px; }
+.csel-wrap { position: relative; flex-shrink: 0; }
+.csel { appearance: none; -webkit-appearance: none; padding: 14px 32px 14px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 15px; background: white; color: var(--text); outline: none; cursor: pointer; font-family: 'Inter', sans-serif; min-width: 110px; }
+.csel-wrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #999; pointer-events: none; }
+.wa-num { flex: 1; padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; background: white; color: var(--text); outline: none; font-family: 'Inter', sans-serif; }
+
+.ferr { font-size: 12px; color: #e11d48; margin-bottom: 12px; display: none; font-weight: 500; }
+
+/* ── ELITE DASHBOARD ─────────────────────────── */
+#sr { background: var(--white); }
+.diag-header { border: 2px solid var(--navy); padding: 1.5rem; margin: 1.5rem; position: relative; }
+.diag-title { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--navy); margin-bottom: 8px; }
+.diag-meta { font-size: 14px; color: var(--slate); margin-bottom: 4px; }
+.diag-sig-top { font-size: 14px; font-weight: 700; color: var(--gold); }
+
+.letter-box { padding: 0 1.5rem 2rem; }
+.letter-intro { font-size: 15px; color: var(--text); line-height: 1.7; margin-bottom: 1.5rem; }
+.letter-intro p { margin-bottom: 1rem; }
+.letter-quote { font-family: 'IBM Plex Serif', Georgia, serif; font-size: 18px; font-weight: 700; color: var(--navy); border-left: 4px solid var(--gold); padding-left: 1rem; margin: 1.5rem 0; }
+.letter-sig-box { text-align: right; font-family: 'IBM Plex Serif', Georgia, serif; font-size: 16px; font-weight: 700; color: var(--gold); }
+
+.section-divider { border-top: 1px solid #eee; margin: 0 1.5rem 2rem; }
+
+.real-econ { padding: 0 1.5rem 2rem; }
+.re-title { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--navy); margin-bottom: 1.5rem; }
+.re-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 2rem; }
+.re-box { border: 2px solid var(--navy); padding: 1.25rem; text-align: center; }
+.re-box.gold { border-color: var(--gold); background: var(--cream); }
+.re-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--slate); margin-bottom: 8px; }
+.re-val { font-family: 'IBM Plex Serif', Georgia, serif; font-size: 28px; font-weight: 700; color: var(--navy); }
+.re-sub { font-size: 11px; color: var(--slate); margin-top: 4px; }
+
+.chart-box { padding: 0 1.5rem 2.5rem; }
+.chart-ttl { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--navy); text-transform: uppercase; margin-bottom: 1rem; }
+.chart-container { position: relative; height: 200px; width: 100%; background: #fafafa; border: 1px solid #eee; padding: 10px; }
+
+.calc-box { padding: 1.5rem; background: var(--light-gray); margin: 0 1.5rem 2.5rem; border-radius: 8px; }
+.calc-ttl { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--navy); text-transform: uppercase; margin-bottom: 1rem; }
+.calc-list { font-size: 13px; color: var(--slate); line-height: 1.8; }
+.calc-list li { list-style: none; padding-left: 15px; position: relative; }
+.calc-list li::before { content: '•'; position: absolute; left: 0; color: var(--gold); }
+
+.pattern-box { padding: 0 1.5rem 2.5rem; }
+.pat-ttl { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--navy); text-transform: uppercase; margin-bottom: 0.5rem; }
+.pat-name { font-family: 'IBM Plex Serif', Georgia, serif; font-size: 18px; font-weight: 700; color: var(--gold); margin-bottom: 1rem; }
+.pat-desc { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+.equiv-box { padding: 0 1.5rem 2.5rem; }
+.eq-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--navy); text-transform: uppercase; margin-bottom: 1rem; }
+.eq-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; color: var(--text); font-weight: 600; }
+.eq-icon { color: var(--gold); font-size: 18px; }
+
+.roadmap-box { padding: 2rem 1.5rem; background: var(--navy); color: white; }
+.rm-ttl { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 2rem; }
+.rm-step { display: flex; gap: 16px; margin-bottom: 24px; }
+.rm-num { width: 28px; height: 28px; border: 2px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 12px; color: var(--accent); }
+.rm-txt { flex: 1; }
+.rm-step-ttl { font-size: 14px; font-weight: 700; color: white; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.rm-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+.rm-box { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px; }
+
+.cta-sticky { position: sticky; bottom: 0; background: var(--white); padding: 1.25rem 1.5rem; border-top: 1px solid #eee; box-shadow: 0 -10px 30px rgba(0,0,0,0.05); text-align: center; z-index: 100; }
+.btn-wa { display: flex; align-items: center; justify-content: center; gap: 12px; background: #25D366; color: white; text-decoration: none; padding: 18px; border-radius: 12px; font-weight: 700; font-size: 16px; transition: all .2s; box-shadow: 0 8px 20px rgba(37,211,102,0.3); }
+.btn-wa:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37,211,102,0.4); }
+
+@media (max-width: 400px) {
+  #app { border-radius: 0; }
+  #wrap { padding: 0; }
+}
+
+.email-confirm { background: #10b981; color: white; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; margin: 0 1.5rem 1rem; }
+.email-confirm.error { background: #e11d48; }
+.btn-print { display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: #666; border: 1.5px solid #ddd; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; transition: all .18s; }
+.btn-print:hover { color: var(--navy); border-color: #bbb; }
+.loading-overlay { position: fixed; inset: 0; background: rgba(27,45,66,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
+.loading-overlay.hidden { display: none; }
+.loading-text { color: white; font-size: 16px; font-weight: 600; margin-top: 1rem; }
+.loading-sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: .5rem; }
+.spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.resume-banner { margin-top: 1.25rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 1rem; max-width: 360px; margin-left: auto; margin-right: auto; }
+.resume-banner p { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: .75rem; }
+.resume-btns { display: flex; gap: 8px; }
+.btn-resume { flex: 1; padding: 10px; background: var(--gold); color: white; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+.btn-restart { flex: 1; padding: 10px; background: transparent; color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 7px; font-size: 13px; cursor: pointer; font-family: 'Inter', sans-serif; }
+
+@media print {
+  body { background: white !important; }
+  #wrap { padding: 0 !important; }
+  #app { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+  .cta-sticky { display: none !important; }
+  .roadmap-box { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+<div id="app">
+
+  <!-- LANDING -->
+  <div id="sl" class="screen active">
+    <div class="brand">Sergio Arévalo <div class="brand-sub">Estratega Organizacional</div></div>
+    <div class="time-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Auditoría Estratégica Interactiva
+    </div>
+    <h1 class="land-title">¿Cuánto dinero pierdes siendo el cuello de botella de tu empresa?</h1>
+    <p class="land-sub">Descubre el costo real de tu falta de estructura y cuánto capital estás dejando de ganar por operar en lugar de liderar.</p>
+    <button class="btn-main" onclick="startFresh()">Iniciar Auditoría de Fuga →</button>
+    <div class="resume-banner" id="resumeBanner" style="display:none">
+      <p>Tienes una auditoria en progreso</p>
+      <div class="resume-btns">
+        <button class="btn-resume" onclick="resumeSession()">Continuar</button>
+        <button class="btn-restart" onclick="startFresh()">Empezar de nuevo</button>
+      </div>
+    </div>
+    <p class="land-disc">ANÁLISIS DE CAPITAL HUMANO Y SISTÉMICO</p>
+  </div>
+
+  <!-- QUESTIONS -->
+  <div id="sq" class="screen">
+    <div class="q-hero">
+      <div class="q-hero-top">
+        <span class="q-prog" id="qprog">1 / 10</span>
+        <button class="q-exit" onclick="goTo('sl')">← salir</button>
+      </div>
+      <div class="ls-lbl">Fuga de Capital Estimada</div>
+      <div class="ls-amt zero" id="lsamt">$0</div>
+      <div class="ls-sub">anuales por ineficiencia sistémica</div>
+    </div>
+    <div class="pbar"><div class="pfill" id="pfill" style="width:10%"></div></div>
+    <div class="q-body" id="qbody"></div>
+  </div>
+
+  <!-- CAPTURE -->
+  <div id="sc" class="screen">
+    <div class="cap-hero">
+      <div class="cap-teaser">Auditoría Completada</div>
+      <div class="cap-amt" id="capamt">$0</div>
+      <div class="cap-sub">anuales perdidos en la operación</div>
+    </div>
+    <div class="cap-body">
+      <div class="cap-title">Generando tu Diagnóstico Económico...</div>
+      <div class="cap-desc">Ingresa tus datos para desbloquear el análisis interactivo y recibir tu hoja de ruta personalizada.</div>
+      
+      <form id="leadForm" onsubmit="submitCapture(event)">
+        <label class="flbl">Nombre Completo</label>
+        <input class="finp" id="inpnom" type="text" placeholder="Tu nombre" />
+        <div class="ferr" id="errnom">Ingresa tu nombre</div>
+
+        <label class="flbl">Email</label>
+        <input class="finp" id="inpmail" type="email" placeholder="tu@correo.com" autocomplete="email" />
+        <div class="ferr" id="errmail">Ingresa un email valido</div>
+
+        <label class="flbl">WhatsApp de Contacto</label>
+        <div class="wa-row">
+          <div class="csel-wrap">
+            <select class="csel" name="pais_code" id="ccode">
+              <option value="+593">🇪🇨 +593</option>
+              <option value="+57">🇨🇴 +57</option>
+              <option value="+51">🇵🇪 +51</option>
+              <option value="+56">🇨🇱 +56</option>
+              <option value="+52">🇲🇽 +52</option>
+              <option value="+54">🇦🇷 +54</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+34">🇪🇸 +34</option>
+            </select>
+          </div>
+          <input class="wa-num" name="whatsapp" id="inpwa" type="tel" placeholder="999 999 9999" required />
+        </div>
+        <div class="ferr" id="errwa">Ingresa tu número de WhatsApp</div>
+        
+        <button type="submit" class="btn-main" style="max-width:100%;margin-top:1rem">Ver mi Diagnóstico Económico →</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ELITE DASHBOARD RESULTS -->
+  <div id="sr" class="screen">
+    <div class="diag-header">
+      <div class="diag-title">Diagnóstico Económico Empresarial</div>
+      <div class="diag-meta" id="diag-user">Nombre Usuario - Fecha</div>
+      <div class="diag-sig-top">Sergio Arévalo · Estratega Organizacional</div>
+    </div>
+
+    <div class="letter-box">
+      <div class="letter-intro">
+        <p id="letter-greeting">Hola,</p>
+        <p>Este diagnóstico analiza automáticamente tus respuestas para identificar patrones que he visto en más de 20 empresas.</p>
+        <p>Los números que siguen son reales: calculan exactamente cuánto te cuesta mantener el rol de cuello de botella operativo.</p>
+      </div>
+      <div class="letter-quote">Desde adentro de la cancha no ves el partido entero. Si estos resultados resuenan contigo, hablemos.</div>
+      <div class="letter-sig-box">Sergio Arévalo</div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="real-econ">
+      <div class="re-title">TU REALIDAD ECONÓMICA:</div>
+      <div class="re-grid">
+        <div class="re-box gold">
+          <div class="re-lbl">PÉRDIDA ANUAL</div>
+          <div class="re-val" id="re-anual">$0</div>
+          <div class="re-sub">anuales</div>
+        </div>
+        <div class="re-box">
+          <div class="re-lbl">DESGLOSE</div>
+          <div class="re-val" style="font-size:18px" id="re-mensual">Mensual: $0</div>
+          <div class="re-val" style="font-size:18px" id="re-diario">Diario: $0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-ttl">GRÁFICO 1: HORAS vs VALOR POR HORA</div>
+      <div class="chart-container">
+        <canvas id="chart1"></canvas>
+      </div>
+    </div>
+
+    <div class="calc-box">
+      <div class="calc-ttl">CÓMO SE CALCULÓ:</div>
+      <ul class="calc-list" id="calc-list">
+        <!-- Dynamic content -->
+      </ul>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pat-ttl">TU PATRÓN:</div>
+      <div class="pat-name" id="pat-name">"MICROMANAGEMENT OPERATIVO"</div>
+      <div class="pat-desc" id="pat-desc">Tu equipo depende de ti porque nunca construiste los sistemas que les permiten actuar autónomamente.</div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-ttl">GRÁFICO 2: TIEMPO OPERATIVO vs CRECIMIENTO PERDIDO</div>
+      <div class="chart-container">
+        <canvas id="chart2"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-ttl">GRÁFICO 3: DEPENDENCIA vs PÉRDIDA ANUAL</div>
+      <div class="chart-container">
+        <canvas id="chart3"></canvas>
+      </div>
+    </div>
+
+    <div class="equiv-box">
+      <div class="eq-title" id="eq-title">$0 EQUIVALE A:</div>
+      <div class="eq-item"><span class="eq-icon">→</span> <span id="eq-emp">Contratar 3 empleados adicionales</span></div>
+      <div class="eq-item"><span class="eq-icon">→</span> <span id="eq-util">4.5 meses de utilidad neta</span></div>
+      <div class="eq-item"><span class="eq-icon">→</span> <span id="eq-vac">13 vacaciones familiares</span></div>
+    </div>
+
+    <div class="roadmap-box">
+      <div class="rm-ttl">TUS PRÓXIMOS 3 PASOS:</div>
+      
+      <div class="rm-step">
+        <div class="rm-num">1</div>
+        <div class="rm-txt">
+          <div class="rm-step-ttl">ESTA SEMANA: Delegar 3 tareas operativas</div>
+          <div class="rm-check"><div class="rm-box"></div> Aprobaciones <$200</div>
+          <div class="rm-check"><div class="rm-box"></div> Revisiones de rutina</div>
+          <div class="rm-check"><div class="rm-box"></div> Confirmaciones de agenda</div>
+        </div>
+      </div>
+
+      <div class="rm-step">
+        <div class="rm-num">2</div>
+        <div class="rm-txt">
+          <div class="rm-step-ttl">PRÓXIMOS 30 DÍAS: Construir autonomía</div>
+          <div class="rm-check"><div class="rm-box"></div> Matriz de decisiones</div>
+          <div class="rm-check"><div class="rm-box"></div> Límites de autoridad</div>
+          <div class="rm-check"><div class="rm-box"></div> Protocolos de comunicación</div>
+        </div>
+      </div>
+
+      <div class="rm-step">
+        <div class="rm-num">3</div>
+        <div class="rm-txt">
+          <div class="rm-step-ttl">EN 90 DÍAS: Recuperar 20 hrs para CEO work</div>
+          <div class="rm-check"><div class="rm-box"></div> Planificación 3 años</div>
+          <div class="rm-check"><div class="rm-box"></div> Apertura de nuevos mercados</div>
+          <div class="rm-check"><div class="rm-box"></div> Optimización de márgenes</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="emailConfirm"></div>
+
+    <div class="cta-sticky">
+      <a id="btnwa" class="btn-wa" href="#" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Sesión de Desbloqueo Estratégico
+      </a>
+      <button class="btn-print" onclick="window.print()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / Guardar como PDF
+      </button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Enviando tu diagnostico...</div>
+  <div class="loading-sub">Recibiras los resultados en tu correo</div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzZWsOZeWQvo-f9LuFgUXbibJ2idI-nhc0dplsihhjfJKnPJJMgzJbyRREP6N4EeKU/exec';
+const STORAGE_KEY = 'auditoria-vb-state';
+const S = { answers:{}, q:0, nombre:'', wa:'', email:'', pendingAmt:0, c:null, sessionId:'' };
+
+function generarUUID() {
+  return 'xxxx-xxxx-xxxx'.replace(/x/g, function() {
+    return Math.floor(Math.random()*16).toString(16);
+  }) + '-' + Date.now().toString(36);
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers:S.answers, q:S.q, sessionId:S.sessionId, ts:Date.now() })); } catch(e) {}
+}
+function loadState() {
+  try {
+    var raw=localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    var data=JSON.parse(raw);
+    if (Date.now()-data.ts > 86400000) { localStorage.removeItem(STORAGE_KEY); return null; }
+    return data;
+  } catch(e) { return null; }
+}
+function clearState() { try { localStorage.removeItem(STORAGE_KEY); } catch(e) {} }
+
+function enviarParcial() {
+  if (!S.sessionId) return;
+  var datos = encodeURIComponent(JSON.stringify({
+    tipo:'partial',
+    version:'vb',
+    sessionId:S.sessionId,
+    preguntaNum:S.q+1,
+    respuestas:S.answers
+  }));
+  fetch(APPS_SCRIPT_URL+'?data='+datos).catch(function(){});
+}
+
+function showConfirm(msg, isError) {
+  var el=document.getElementById('emailConfirm');
+  el.className='email-confirm'+(isError?' error':'');
+  el.textContent=msg;
+}
+
+const Qs = [
+  { id:'sal', type:'num', txt:'Inversión mensual en tu posición de liderazgo', hlp:'Ingresa tu sueldo mensual bruto o lo que costaría reemplazarte con un gerente de tu nivel.', min:500, max:50000, ph:'Ej: 8000' },
+  { id:'hrs', type:'opt', txt:'¿Cuántas horas semanales dedicas al negocio?', opts:[{l:'40–50 horas',v:45},{l:'50–60 horas',v:55},{l:'60–70 horas',v:65},{l:'70+ horas',v:75}] },
+  { id:'apr', type:'opt', txt:'Horas semanales en micro-aprobaciones', hlp:'Firmar facturas, autorizar gastos menores, validar decisiones que tu equipo debería tomar solo.', opts:[{l:'0–3 horas',v:1.5},{l:'3–6 horas',v:4.5},{l:'6–10 horas',v:8},{l:'10+ horas',v:12}] },
+  { id:'reu', type:'opt', txt:'Reuniones operativas sin valor estratégico', hlp:'Sesiones donde estás presente "por si acaso" o para resolver incendios tácticos.', opts:[{l:'0–2 horas / semana',v:1},{l:'2–5 horas / semana',v:3.5},{l:'5–8 horas / semana',v:6.5},{l:'8+ horas / semana',v:10}] },
+  { id:'con', type:'opt', txt:'Índice de Interrupción (Consultas del equipo)', hlp:'¿Qué % del tiempo tu equipo te consulta en lugar de resolver de forma autónoma?', opts:[{l:'10–30%',v:20,s:'Casi siempre resuelven solos'},{l:'30–50%',v:40,s:'Mitad y mitad'},{l:'50–70%',v:60,s:'Te consultan seguido'},{l:'70–90%',v:80,s:'Casi todo pasa por ti'}] },
+  { id:'dis', type:'opt', txt:'Horas de "Disponibilidad Reactiva"', hlp:'Tiempo que pasas disponible para el equipo sin realizar trabajo estratégico real.', opts:[{l:'0–3 horas',v:1.5},{l:'3–6 horas',v:4.5},{l:'6–10 horas',v:8},{l:'10+ horas',v:12}] },
+  { id:'mic', type:'opt', txt:'Horas de Supervisión de Control (Micro-management)', hlp:'Corregir o revisar trabajo que ya debería estar terminado y correcto.', opts:[{l:'0–2 horas',v:1},{l:'2–5 horas',v:3.5},{l:'5–10 horas',v:7.5},{l:'10+ horas',v:12}] },
+  { id:'est', type:'opt', txt:'Tiempo dedicado a Planificación Estratégica Real', hlp:'Metas a largo plazo, nuevos mercados, decisiones de crecimiento estructural.', opts:[{l:'0–2 horas',v:1},{l:'2–5 horas',v:3.5},{l:'5–10 horas',v:7.5},{l:'10+ horas',v:12}] },
+  { id:'cre', type:'opt', txt:'Potencial de Crecimiento con Agenda Liberada', hlp:'Si te dedicaras 100% a la estrategia, ¿cuánto más podría crecer tu facturación?', opts:[{l:'5% adicional por año',v:5},{l:'10% adicional por año',v:10},{l:'15% adicional por año',v:15},{l:'20%+ adicional por año',v:20}] },
+  { id:'vac', type:'opt', txt:'Índice de Dependencia Operativa (Última desconexión)', hlp:'¿Hace cuánto tiempo no te desconectas totalmente del negocio por más de 5 días?', opts:[{l:'Menos de 6 meses',v:3},{l:'6–12 meses',v:9},{l:'1–2 años',v:18},{l:'Más de 2 años',v:30}] }
+];
+
+const fmt = n => '$' + Math.round(n).toLocaleString('es-EC');
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function calc() {
+  const a = S.answers;
+  if (!a.sal || !a.hrs) return null;
+  const cAnual = a.sal * 1.4 * 12;
+  const cHora = cAnual / (a.hrs * 52);
+  const hDesp = (a.apr||0) + (a.reu||0) + (a.dis||0) + (a.mic||0) + (a.hrs*(a.con||0)/100);
+  let f = 2.1; // Factor de oportunidad estándar solicitado
+  const pA = Math.round(hDesp*52*cHora*f);
+  
+  return { 
+    pA, pM:Math.round(pA/12), pD:Math.round(pA/365), hD:Math.round(hDesp*10)/10, 
+    cHora:Math.round(cHora), f, cAnual, hDesp,
+    sal: a.sal, hrs: a.hrs, cre: a.cre || 0, dep: (hDesp/a.hrs)*100
+  };
+}
+
+function updScore() {
+  const c = calc();
+  const aEl=document.getElementById('lsamt');
+  if (!c || c.pA===0) {
+    aEl.textContent='$0'; aEl.classList.add('zero');
+  } else {
+    aEl.textContent=fmt(c.pA); aEl.classList.remove('zero');
+    S.pendingAmt=c.pA;
+  }
+}
+
+function renderQ() {
+  const q=Qs[S.q];
+  document.getElementById('qprog').textContent=(S.q+1)+' / 10';
+  document.getElementById('pfill').style.width=((S.q+1)/10*100)+'%';
+  updScore();
+  let h=`<div class="q-num-lbl">Paso ${S.q+1} de 10</div><div class="q-txt">${q.txt}</div>`;
+  if (q.hlp) h+=`<div class="q-hlp">${q.hlp}</div>`;
+  if (q.type==='num') {
+    const v=S.answers[q.id]||'';
+    h+=`<div class="num-wrap"><span class="num-pre">$</span><input type="number" id="ni" value="${v}" placeholder="${q.ph}" min="${q.min}" max="${q.max}" inputmode="numeric" oninput="onNI(this.value)" /></div>`;
+  } else {
+    h+=`<div class="opts">`;
+    q.opts.forEach(o=>{
+      const sel=S.answers[q.id]===o.v;
+      h+=`<button class="opt${sel?' sel':''}" onclick="selOpt(${o.v},this)"><div class="opt-radio"></div><span class="opt-lbl">${o.l}${o.s?`<small>${o.s}</small>`:''}</span></button>`;
+    });
+    h+=`</div>`;
+  }
+  document.getElementById('qbody').innerHTML=h;
+}
+
+function onNI(val) {
+  const q=Qs[S.q], n=parseFloat(val);
+  if (!isNaN(n) && n>=q.min && n<=q.max) {
+    S.answers[q.id]=n; updScore(); saveState(); enviarParcial();
+    clearTimeout(window._nt);
+    window._nt=setTimeout(advance, 900);
+  }
+}
+
+function selOpt(val, el) {
+  S.answers[Qs[S.q].id]=val;
+  document.querySelectorAll('.opt').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  updScore(); saveState(); enviarParcial();
+  setTimeout(advance, 380);
+}
+
+function advance() {
+  if (S.q>=Qs.length || S.answers[Qs[S.q].id]===undefined) return;
+  S.q++; saveState();
+  if (S.q>=Qs.length) {
+    document.getElementById('capamt').textContent=fmt(S.pendingAmt);
+    goTo('sc');
+  } else renderQ();
+}
+
+function submitCapture(e) {
+  e.preventDefault();
+  var nom=document.getElementById('inpnom').value.trim();
+  var mail=document.getElementById('inpmail').value.trim();
+  var num=document.getElementById('inpwa').value.replace(/\D/g,'');
+  var ok=true;
+  if (nom.length<2){document.getElementById('errnom').style.display='block';ok=false;}
+  else{document.getElementById('errnom').style.display='none';}
+  if (!mail||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){document.getElementById('errmail').style.display='block';ok=false;}
+  else{document.getElementById('errmail').style.display='none';}
+  if (num.length<7){document.getElementById('errwa').style.display='block';ok=false;}
+  else{document.getElementById('errwa').style.display='none';}
+  if (!ok) return;
+  S.nombre=nom;
+  S.email=mail;
+  S.wa=document.getElementById('ccode').value+num;
+
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  clearState();
+
+  var c=calc();
+  S.c=c;
+
+  fetch(APPS_SCRIPT_URL, {
+    method:'POST',
+    body:JSON.stringify({
+      tipo:'complete',
+      version:'vb',
+      sessionId:S.sessionId,
+      nombre:S.nombre,
+      email:S.email,
+      whatsapp:S.wa,
+      respuestas:S.answers,
+      resultados: {
+        potencial_anual: c.pA,
+        potencial_mensual: c.pM,
+        potencial_diario: c.pD,
+        horas_recuperables_sem: c.hD,
+        costo_hora: c.cHora,
+        factor: c.f,
+        patron: '"Fuga de Capital"'
+      }
+    })
+  })
+  .then(function(){
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    showResults();
+    showConfirm('Diagnostico enviado a '+S.email+'. Si no lo ves en tu bandeja, revisa la carpeta de spam.', false);
+  })
+  .catch(function(){
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    showResults();
+    showConfirm('No pudimos enviar el email. Usa el boton "Imprimir" para guardar tu diagnostico.', true);
+  });
+}
+
+function showResults() {
+  const c = calc();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-EC', { day:'numeric', month:'long', year:'numeric' });
+  
+  document.getElementById('diag-user').textContent = `${S.nombre} - ${dateStr}`;
+  document.getElementById('letter-greeting').textContent = `Hola ${S.nombre.split(' ')[0]},`;
+  document.getElementById('re-anual').textContent = fmt(c.pA);
+  document.getElementById('re-mensual').textContent = `Mensual: ${fmt(c.pM)}`;
+  document.getElementById('re-diario').textContent = `Diario: ${fmt(c.pD)}`;
+  document.getElementById('eq-title').textContent = `${fmt(c.pA)} EQUIVALE A:`;
+  
+  // Equivalencias
+  document.getElementById('eq-emp').textContent = `Contratar ${Math.max(1, Math.round(c.pA/20000))} empleados adicionales`;
+  document.getElementById('eq-util').textContent = `${(c.pA/(c.cAnual/4)).toFixed(1)} meses de utilidad neta`;
+  document.getElementById('eq-vac').textContent = `${Math.max(1, Math.round(c.pA/5000))} vacaciones familiares`;
+
+  // Cálculo Detallado
+  document.getElementById('calc-list').innerHTML = `
+    <li>Salario mensual: ${fmt(c.sal)}</li>
+    <li>Costo real anual: ${fmt(c.cAnual)} (incluye cargas sociales)</li>
+    <li>Horas desperdiciadas: ${c.hD} hrs/semana</li>
+    <li>Factor oportunidad: ${c.f}x</li>
+    <li>Fórmula: (${c.hD} × 52 × ${fmt(c.cHora)}) × ${c.f} = ${fmt(c.pA)}</li>
+  `;
+
+  const msg = encodeURIComponent(`Hola Sergio, acabo de completar mi Diagnóstico Económico. Mi pérdida anual es de ${fmt(c.pA)}. Me gustaría agendar la sesión de desbloqueo estratégico.`);
+  document.getElementById('btnwa').href = `https://wa.me/593979935989?text=${msg}`;
+
+  goTo('sr');
+  renderCharts(c);
+}
+
+function renderCharts(c) {
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#eee' } },
+      x: { grid: { display: false } }
+    }
+  };
+
+  // Chart 1: Horas vs Valor
+  new Chart(document.getElementById('chart1'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Óptimo', data: [{x: 40, y: 80}], backgroundColor: '#10b981', pointRadius: 8 },
+        { label: 'Tú', data: [{x: c.hrs, y: c.cHora}], backgroundColor: '#C9952A', pointRadius: 10, pointStyle: 'rectRot' },
+        { label: 'Crítico', data: [{x: 75, y: 20}], backgroundColor: '#e11d48', pointRadius: 8 }
+      ]
+    },
+    options: commonOptions
+  });
+
+  // Chart 2: Tiempo Operativo vs Crecimiento Perdido
+  new Chart(document.getElementById('chart2'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Óptimo', data: [{x: 20, y: 20}], backgroundColor: '#10b981', pointRadius: 8 },
+        { label: 'Tú', data: [{x: c.dep, y: c.cre}], backgroundColor: '#C9952A', pointRadius: 10, pointStyle: 'rectRot' },
+        { label: 'Crítico', data: [{x: 80, y: 5}], backgroundColor: '#e11d48', pointRadius: 8 }
+      ]
+    },
+    options: commonOptions
+  });
+
+  // Chart 3: Dependencia vs Pérdida
+  new Chart(document.getElementById('chart3'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Óptimo', data: [{x: 20, y: 0}], backgroundColor: '#10b981', pointRadius: 8 },
+        { label: 'Tú', data: [{x: c.dep, y: c.pA/1000}], backgroundColor: '#C9952A', pointRadius: 10, pointStyle: 'rectRot' },
+        { label: 'Crítico', data: [{x: 80, y: 100}], backgroundColor: '#e11d48', pointRadius: 8 }
+      ]
+    },
+    options: commonOptions
+  });
+}
+
+function startFresh() {
+  clearState();
+  S.answers={}; S.q=0; S.nombre=''; S.wa=''; S.email='';
+  S.sessionId=generarUUID();
+  saveState();
+  renderQ();
+  goTo('sq');
+}
+function resumeSession() { renderQ(); goTo('sq'); }
+
+(function init() {
+  var saved=loadState();
+  if (saved && Object.keys(saved.answers).length>0) {
+    S.answers=saved.answers;
+    S.q=saved.q;
+    S.sessionId=saved.sessionId||generarUUID();
+    document.getElementById('resumeBanner').style.display='block';
+  }
+  renderQ();
+})();
+</script>
+</body>
+</html>

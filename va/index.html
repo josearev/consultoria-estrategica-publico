@@ -448,6 +448,7 @@ function enviarParcial() {
   if (!S.sessionId) return;
   var datos = encodeURIComponent(JSON.stringify({
     tipo:'partial',
+    version:'va',
     sessionId:S.sessionId,
     preguntaNum:S.q+1,
     respuestas:S.answers
@@ -639,6 +640,7 @@ function submitCapture(e) {
     method:'POST',
     body:JSON.stringify({
       tipo:'complete',
+      version:'va',
       sessionId:S.sessionId,
       nombre:S.nombre,
       email:S.email,
@@ -688,79 +690,243 @@ function unlockResults() {
   renderCharts(c);
 }
 
-function buildPDF(c, pat) {
+function buildPDF(c, pat, nombre) {
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  const navy=[27,45,66], gold=[201,149,42], cream=[248,246,241], gray=[100,100,100];
-  const W=210, M=20;
+  const navy=[27,45,66], gold=[201,149,42], accent=[232,184,75], cream=[248,246,241];
+  const slate=[71,85,105], text=[44,44,44], white=[255,255,255];
+  const lightGray=[241,245,249];
+  const W=210, H=297, M=18, CW=W-M*2;
 
-  // Header
-  doc.setFillColor(...navy); doc.rect(0,0,W,55,'F');
-  doc.setTextColor(...gold); doc.setFontSize(9); doc.setFont('helvetica','bold');
-  doc.text('SERGIO AREVALO  ·  ESTRATEGA ORGANIZACIONAL',M,16);
-  doc.setTextColor(255,255,255); doc.setFontSize(18);
-  doc.text('Auditoria de Capital Operativo',M,28);
-  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
-  doc.text(S.nombre+'  ·  '+new Date().toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'}),M,38);
-  doc.setTextColor(...gold); doc.setFontSize(9);
-  doc.text('TU EMPRESA PODRIA CAPTURAR ANUALMENTE',M,50);
+  // ── Helper: rounded rect ──
+  function roundRect(x,y,w,h,r,style) {
+    doc.roundedRect(x,y,w,h,r,r,style);
+  }
+
+  // ── Helper: gold section title with line ──
+  function sectionTitle(label, yPos) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.setTextColor(...gold);
+    doc.text(label, M, yPos);
+    const tw = doc.getTextWidth(label) + 2;
+    doc.setDrawColor(...accent); doc.setLineWidth(0.3);
+    doc.line(M + tw, yPos - 1, W - M, yPos - 1);
+    return yPos + 5;
+  }
+
+  // ── HEADER — navy background with branding ──
+  doc.setFillColor(...navy); doc.rect(0, 0, W, 38, 'F');
+
+  // Brand name in gold
+  doc.setTextColor(...accent); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('SERGIO AREVALO', M, 11);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7);
+  doc.setTextColor(180,180,180);
+  doc.text('ESTRATEGA ORGANIZACIONAL', M, 16);
+
+  // Gold divider line inside header
+  doc.setDrawColor(...gold); doc.setLineWidth(0.6);
+  doc.line(M, 19, W - M, 19);
+
+  // Title and date
+  doc.setTextColor(...white); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Auditoria de Capital Operativo', M, 26);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(200,200,200);
+  const dateStr = new Date().toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'});
+  doc.text(nombre + '  |  ' + dateStr, M, 33);
+
+  // Thin gold accent line at bottom of header
+  doc.setDrawColor(...gold); doc.setLineWidth(1);
+  doc.line(0, 38, W, 38);
+
+  // ── BIG AMOUNT — full-width navy block ──
+  doc.setFillColor(15, 23, 35); doc.rect(0, 39, W, 28, 'F');
+
+  // Label above amount
+  doc.setTextColor(...accent); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+  doc.text('TU EMPRESA PODRIA CAPTURAR ANUALMENTE', W/2, 47, {align:'center'});
 
   // Big number
-  doc.setFillColor(15,25,38); doc.rect(0,55,W,40,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(36); doc.setFont('helvetica','bold');
-  doc.text(fmt(c.pA),W/2,78,{align:'center'});
-  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(180,180,180);
-  doc.text('adicionales al dejar de ser el cuello de botella operativo',W/2,88,{align:'center'});
+  doc.setTextColor(...white); doc.setFont('helvetica','bold'); doc.setFontSize(28);
+  doc.text(fmt(c.pA), W/2, 57, {align:'center'});
 
-  // Metrics
-  let y=105;
-  [[fmt(c.pM),'por mes'],[fmt(c.pD),'por dia'],[c.hD+'h','horas/sem']].forEach((item,i)=>{
-    const x=M+i*55;
-    doc.setFillColor(...cream); doc.rect(x,y,50,22,'F');
-    doc.setTextColor(...gold); doc.setFontSize(14); doc.setFont('helvetica','bold');
-    doc.text(item[0],x+25,y+10,{align:'center'});
-    doc.setTextColor(...gray); doc.setFontSize(8); doc.setFont('helvetica','normal');
-    doc.text(item[1],x+25,y+17,{align:'center'});
+  // Subtitle
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(160,170,185);
+  doc.text('adicionales al dejar de ser el cuello de botella operativo', W/2, 63, {align:'center'});
+
+  // ── METRICS GRID — 3 boxes with cream bg and gold border ──
+  let y = 72;
+  const boxW = (CW - 8) / 3; // 3 boxes with 4mm gaps
+  const boxH = 20;
+  const metrics = [
+    [fmt(c.pM), 'MENSUAL', 'potencial/mes'],
+    [fmt(c.pD), 'DIARIO', 'potencial/dia'],
+    [c.hD + 'h', 'RECUPERABLES', 'horas/semana']
+  ];
+  metrics.forEach((item, i) => {
+    const x = M + i * (boxW + 4);
+    // Cream background box
+    doc.setFillColor(...cream);
+    doc.setDrawColor(...accent); doc.setLineWidth(0.4);
+    roundRect(x, y, boxW, boxH, 2, 'FD');
+    // Label
+    doc.setTextColor(...slate); doc.setFont('helvetica','bold'); doc.setFontSize(6);
+    doc.text(item[1], x + boxW/2, y + 5, {align:'center'});
+    // Value
+    doc.setTextColor(...navy); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.text(item[0], x + boxW/2, y + 12.5, {align:'center'});
+    // Sub-label
+    doc.setTextColor(...slate); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+    doc.text(item[2], x + boxW/2, y + 17.5, {align:'center'});
   });
 
-  // Sections
-  y=140;
-  [
-    ['TU PATRON: '+pat.name,[pat.desc]],
-    ['COMO SE CALCULO',['Salario mensual: '+fmt(c.sal),'Costo real anual: '+fmt(c.cAnual),'Horas recuperables: '+c.hD+' hrs/semana','Factor oportunidad: '+c.f+'x','Formula: ('+c.hD+' x 52 x '+fmt(c.cHora)+') x '+c.f+' = '+fmt(c.pA)]],
-    ['EQUIVALENCIAS',['Contratar '+Math.max(1,Math.round(c.pA/20000))+' empleados adicionales',(c.pA/(c.cAnual/4)).toFixed(1)+' meses de utilidad neta',Math.max(1,Math.round(c.pA/5000))+' vacaciones familiares']],
-    ['PROXIMOS PASOS',['1. Esta semana: Delegar 3 tareas operativas','2. Proximos 30 dias: Construir autonomia (matriz de decisiones)','3. En 90 dias: Recuperar 20 hrs para CEO work']]
-  ].forEach(([title,lines])=>{
-    doc.setTextColor(...navy); doc.setFontSize(10); doc.setFont('helvetica','bold');
-    doc.text(title,M,y);
-    doc.setDrawColor(...gold); doc.setLineWidth(0.5); doc.line(M,y+2,W-M,y+2);
-    y+=10;
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...gray);
-    lines.forEach(l=>{
-      const wrapped=doc.splitTextToSize(l,W-M*2);
-      doc.text(wrapped,M,y); y+=wrapped.length*5+3;
+  // ── PATRON section ──
+  y = 97;
+  y = sectionTitle('TU PATRON IDENTIFICADO', y);
+
+  // Pattern name in gold, prominent
+  doc.setTextColor(...gold); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text(pat.name, M, y);
+  y += 6;
+
+  // Pattern description
+  doc.setTextColor(...text); doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  const patLines = doc.splitTextToSize(pat.desc, CW);
+  doc.text(patLines, M, y);
+  y += patLines.length * 4 + 4;
+
+  // ── CALCULO section — light gray box ──
+  y = sectionTitle('COMO SE CALCULO', y);
+
+  const calcItems = [
+    'Salario mensual: ' + fmt(c.sal),
+    'Costo real anual: ' + fmt(c.cAnual) + ' (incluye cargas sociales)',
+    'Horas recuperables: ' + c.hD + ' hrs/semana',
+    'Factor oportunidad: ' + c.f + 'x',
+    'Formula: (' + c.hD + ' x 52 x ' + fmt(c.cHora) + ') x ' + c.f + ' = ' + fmt(c.pA)
+  ];
+
+  // Gray background box
+  const calcBoxH = calcItems.length * 5.5 + 6;
+  doc.setFillColor(...lightGray);
+  roundRect(M, y - 3, CW, calcBoxH, 2, 'F');
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  calcItems.forEach(item => {
+    // Gold bullet
+    doc.setFillColor(...gold);
+    doc.circle(M + 4, y - 0.8, 0.8, 'F');
+    // Text
+    doc.setTextColor(...slate);
+    doc.text(item, M + 8, y);
+    y += 5.5;
+  });
+  y += 4;
+
+  // ── EQUIVALENCIAS section ──
+  y = sectionTitle(fmt(c.pA) + ' EQUIVALE A:', y);
+
+  const equivItems = [
+    'Contratar ' + Math.max(1,Math.round(c.pA/20000)) + ' empleados adicionales',
+    (c.pA/(c.cAnual/4)).toFixed(1) + ' meses de utilidad neta',
+    Math.max(1,Math.round(c.pA/5000)) + ' vacaciones familiares'
+  ];
+  equivItems.forEach(item => {
+    // Gold arrow (ASCII-safe for WinAnsiEncoding)
+    doc.setTextColor(...gold); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('>>', M + 2, y);
+    // Item text
+    doc.setTextColor(...text); doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text(item, M + 10, y);
+    y += 6;
+  });
+  y += 3;
+
+  // ── ROADMAP section — navy background ──
+  // Calculate actual roadmap height dynamically
+  const roadmapH = 62;
+  const footerH = 20;
+  const needsNewPage = (y + roadmapH + footerH) > H;
+
+  if (needsNewPage) {
+    doc.addPage();
+    y = 18;
+  }
+
+  // Roadmap navy background
+  const roadmapY = y;
+  doc.setFillColor(...navy); doc.rect(0, roadmapY, W, roadmapH, 'F');
+  y = roadmapY + 6;
+
+  // Roadmap title
+  doc.setTextColor(...accent); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('TUS PROXIMOS 3 PASOS', M, y);
+  y += 6;
+
+  const steps = [
+    { title: 'ESTA SEMANA: Delegar 3 tareas operativas', items: ['Aprobaciones menores', 'Revisiones de rutina', 'Confirmaciones de agenda'] },
+    { title: 'PROXIMOS 30 DIAS: Construir autonomia', items: ['Matriz de decisiones', 'Limites de autoridad', 'Protocolos de comunicacion'] },
+    { title: 'EN 90 DIAS: Recuperar 20 hrs para CEO work', items: ['Planificacion a 3 anios', 'Apertura de nuevos mercados', 'Optimizacion de margenes'] }
+  ];
+
+  steps.forEach((step, i) => {
+    const stepX = M;
+    // Numbered circle with gold border
+    doc.setDrawColor(...accent); doc.setLineWidth(0.5);
+    doc.setFillColor(...navy);
+    doc.circle(stepX + 4, y - 1, 3.5, 'FD');
+    doc.setTextColor(...accent); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.text(String(i + 1), stepX + 4, y + 0.3, {align:'center'});
+
+    // Step title
+    doc.setTextColor(...white); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.text(step.title, stepX + 11, y);
+    y += 4;
+
+    // Sub-items with checkbox squares
+    step.items.forEach(sub => {
+      doc.setDrawColor(100,120,140);
+      doc.setLineWidth(0.25);
+      doc.rect(stepX + 12, y - 2.5, 2.2, 2.2);
+      doc.setTextColor(180,190,200); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+      doc.text(sub, stepX + 17, y);
+      y += 3.5;
     });
-    y+=4;
+    y += 1.5;
   });
 
-  // Footer
-  doc.setFillColor(...navy); doc.rect(0,272,W,25,'F');
-  doc.setTextColor(...gold); doc.setFontSize(10); doc.setFont('helvetica','bold');
-  doc.text('¿Listo para capturar este potencial?',M,282);
-  doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('wa.me/593979935989  ·  Sesion de desbloqueo estrategico sin costo',M,290);
+  // ── FOOTER — navy bar with CTA ──
+  const fY = H - footerH;
+  doc.setFillColor(...navy);
+  doc.rect(0, fY, W, footerH, 'F');
+
+  // Gold accent line at top of footer
+  doc.setDrawColor(...gold); doc.setLineWidth(0.8);
+  doc.line(0, fY, W, fY);
+
+  // CTA text
+  doc.setTextColor(...white); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text('Listo para capturar este potencial?', M, fY + 8);
+
+  // Contact info
+  doc.setTextColor(...accent); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('Sesion de Desbloqueo Estrategico  |  wa.me/593979935989', M, fY + 14);
+
+  // Small branding right-aligned
+  doc.setTextColor(120,130,145); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+  doc.text('Sergio Arevalo  -  Estratega Organizacional', W - M, fY + 14, {align:'right'});
 
   return doc;
 }
 
 function generarPDFBase64(c, pat) {
-  const doc=buildPDF(c, pat);
+  const doc=buildPDF(c, pat, S.nombre);
   return doc.output('datauristring').split(',')[1];
 }
 
 function descargarPDF() {
   const c=S.c, pat=getPatron();
-  const doc=buildPDF(c, pat);
+  const doc=buildPDF(c, pat, S.nombre);
   doc.save('Auditoria-'+S.nombre.replace(/\s+/g,'-')+'.pdf');
 }
 
