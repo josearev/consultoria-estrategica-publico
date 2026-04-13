@@ -474,7 +474,7 @@ function enviarParcial() {
     preguntaNum:S.q+1,
     respuestas:S.answers
   }));
-  fetch(APPS_SCRIPT_URL+'?data='+datos).catch(function(){});
+  fetch(APPS_SCRIPT_URL+'?data='+datos).catch(function(err){ console.error('Error parcial:', err); });
 }
 
 function showConfirm(msg, isError) {
@@ -596,7 +596,6 @@ function submitCapture(e) {
   S.wa=document.getElementById('ccode').value+num;
 
   document.getElementById('loadingOverlay').classList.remove('hidden');
-  clearState();
 
   var c=calc();
   S.c=c;
@@ -623,12 +622,15 @@ function submitCapture(e) {
     })
   })
   .then(function(){
+    clearState();
     document.getElementById('loadingOverlay').classList.add('hidden');
     showResults();
   })
-  .catch(function(){
+  .catch(function(err){
+    console.error('Error enviando datos:', err);
     document.getElementById('loadingOverlay').classList.add('hidden');
     showResults();
+    showConfirm('Error al guardar datos. Usa el boton "Imprimir" para guardar tu diagnostico.', true);
   });
 }
 
