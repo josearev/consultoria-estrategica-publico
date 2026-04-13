@@ -546,7 +546,7 @@ function selOpt(val, el) {
 }
 
 function advance() {
-  if (S.answers[Qs[S.q].id]===undefined) return;
+  if (S.q>=Qs.length || S.answers[Qs[S.q].id]===undefined) return;
   S.q++; saveState();
   if (S.q>=Qs.length) { showResultsPartial(); }
   else renderQ();
@@ -572,8 +572,6 @@ function showResultsPartial() {
   document.getElementById('re-anual').textContent=fmt(c.pA);
   document.getElementById('re-mensual').textContent='Mensual: '+fmt(c.pM);
   document.getElementById('re-diario').textContent='Diario: '+fmt(c.pD);
-  document.getElementById('hiddenResultado').value=fmt(c.pA);
-
   const pat=getPatron();
   document.getElementById('pat-name').textContent=pat.name;
   document.getElementById('pat-desc').textContent=pat.desc;
