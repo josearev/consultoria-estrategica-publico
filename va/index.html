@@ -206,7 +206,7 @@ html, body {
 
 .cta-sticky { position: sticky; bottom: 0; background: var(--white); padding: 1rem 1.25rem; border-top: 1px solid #eee; box-shadow: 0 -10px 30px rgba(0,0,0,0.05); text-align: center; z-index: 100; }
 .cta-sticky.hidden { display: none; }
-.email-confirm { background: #10b981; color: white; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; margin: 0 1.25rem 1rem; }
+.email-confirm { background: #E8B84B; color: white; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; margin: 0 1.25rem 1rem; }
 .email-confirm.error { background: #e11d48; }
 .btn-pdf { display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: #666; border: 1.5px solid #ddd; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; transition: all .18s; }
 .btn-pdf:hover { color: var(--navy); border-color: #bbb; }
@@ -233,6 +233,15 @@ html, body {
 @media (min-width: 640px) {
   #wrap { padding: 32px 16px 64px; }
   #app { border-radius: 24px; box-shadow: 0 32px 100px rgba(0,0,0,0.6); }
+}
+
+@media print {
+  body { background: white !important; }
+  #wrap { padding: 0 !important; }
+  #app { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+  .cta-sticky { display: none !important; }
+  .email-confirm { display: none !important; }
+  .roadmap-box { break-inside: avoid; }
 }
 </style>
 </head>
@@ -418,6 +427,10 @@ html, body {
       <button class="btn-pdf" onclick="descargarPDF()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Descargar PDF
+      </button>
+      <button class="btn-pdf" onclick="window.print()" style="margin-top:6px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / Guardar como PDF
       </button>
     </div>
   </div>
@@ -771,7 +784,18 @@ function buildPDF(c, pat, nombre) {
       doc.text(p.label, px + 4, py + 1);
     });
 
-    return cy + ch + 4;
+    // Legend bar below chart
+    var ly = cy + ch + 1;
+    var lx = cx + 10;
+    points.forEach(function(p, i) {
+      doc.setFillColor(p.color[0], p.color[1], p.color[2]);
+      doc.circle(lx, ly, 1.5, 'F');
+      doc.setTextColor(...slate); doc.setFont('helvetica','normal'); doc.setFontSize(6);
+      doc.text(p.label, lx + 3, ly + 1);
+      lx += doc.getTextWidth(p.label) + 10;
+    });
+
+    return cy + ch + 6;
   }
 
   // ── HEADER — navy background with branding ──
@@ -930,9 +954,23 @@ function buildPDF(c, pat, nombre) {
   );
   y += 4;
 
+  // ── CHART 3: Dependencia vs Perdida ──
+  y = sectionTitle('DEPENDENCIA VS PERDIDA ANUAL', y);
+  y = drawScatterChart(doc, M, y, CW, 32, navy, gold, accent, slate,
+    {x:'% dependencia', y:'Perdida ($K)'},
+    [
+      {x:20, y:0, color:[16,185,129], label:'Optimo'},
+      {x:c.dep, y:c.pA/1000, color:gold, label:'Tu posicion'},
+      {x:80, y:100, color:[225,29,72], label:'Critico'}
+    ],
+    {xMin:10,xMax:90,yMin:0,yMax:Math.max(120, c.pA/1000+20)}
+  );
+  y += 4;
+
   // ── ROADMAP section — navy background ──
   const roadmapH = 62;
   const footerH = 20;
+  if (y + roadmapH + footerH > H) { doc.addPage(); y = 18; }
   const roadmapY = y;
   doc.setFillColor(...navy); doc.rect(0, roadmapY, W, roadmapH, 'F');
   y = roadmapY + 6;

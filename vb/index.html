@@ -625,12 +625,10 @@ function submitCapture(e) {
   .then(function(){
     document.getElementById('loadingOverlay').classList.add('hidden');
     showResults();
-    showConfirm('Diagnostico enviado a '+S.email+'. Si no lo ves en tu bandeja, revisa la carpeta de spam.', false);
   })
   .catch(function(){
     document.getElementById('loadingOverlay').classList.add('hidden');
     showResults();
-    showConfirm('No pudimos enviar el email. Usa el boton "Imprimir" para guardar tu diagnostico.', true);
   });
 }
 
