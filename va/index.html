@@ -436,7 +436,27 @@ html, body {
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/TU_DEPLOYMENT_ID/exec';
 
 const STORAGE_KEY = 'auditoria-sergio-state';
-const S = { answers:{}, q:0, nombre:'', wa:'', email:'', pendingAmt:0, c:null };
+const S = { answers:{}, q:0, nombre:'', wa:'', email:'', pendingAmt:0, c:null, sessionId:'' };
+
+function generarUUID() {
+  return 'xxxx-xxxx-xxxx'.replace(/x/g, function() {
+    return Math.floor(Math.random()*16).toString(16);
+  }) + '-' + Date.now().toString(36);
+}
+
+function enviarParcial() {
+  if (!S.sessionId) return;
+  fetch(APPS_SCRIPT_URL, {
+    method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      tipo:'partial',
+      sessionId:S.sessionId,
+      preguntaNum:S.q+1,
+      respuestas:S.answers
+    })
+  }).catch(function(){});
+}
 
 const Qs = [
   { id:'sal', type:'num', txt:'Inversion mensual en tu posicion de liderazgo', hlp:'Tu sueldo mensual bruto o lo que costaria reemplazarte con un gerente de tu nivel.', min:500, max:50000, ph:'Ej: 8000' },
@@ -452,7 +472,7 @@ const Qs = [
 const fmt = n => '$' + Math.round(n).toLocaleString('es-EC');
 
 function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers:S.answers, q:S.q, ts:Date.now() })); } catch(e) {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers:S.answers, q:S.q, sessionId:S.sessionId, ts:Date.now() })); } catch(e) {}
 }
 function loadState() {
   try {
@@ -529,20 +549,20 @@ function renderQ() {
 
 function onNI(val) {
   const q=Qs[S.q], n=parseFloat(val);
-  if (!isNaN(n) && n>=q.min && n<=q.max) { S.answers[q.id]=n; saveState(); updNav(); }
+  if (!isNaN(n) && n>=q.min && n<=q.max) { S.answers[q.id]=n; saveState(); enviarParcial(); updNav(); }
 }
 function onSlider(val) {
   S.answers[Qs[S.q].id]=parseInt(val);
   document.getElementById('sliderVal').textContent=val+'%';
   const sl=document.getElementById('sliderInput');
   sl.style.setProperty('--pct', ((val-sl.min)/(sl.max-sl.min))*100+'%');
-  saveState(); updNav();
+  saveState(); enviarParcial(); updNav();
 }
 function selOpt(val, el) {
   S.answers[Qs[S.q].id]=val;
   document.querySelectorAll('.opt').forEach(b=>b.classList.remove('sel'));
   el.classList.add('sel');
-  saveState(); updNav();
+  saveState(); enviarParcial(); updNav();
 }
 
 function advance() {
@@ -623,19 +643,12 @@ function submitCapture(e) {
     mode:'no-cors',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
+      tipo:'complete',
+      sessionId:S.sessionId,
       nombre:S.nombre,
       email:S.email,
       whatsapp:S.wa,
-      respuestas: {
-        salario_mensual: S.answers.sal,
-        horas_semanales: S.answers.hrs,
-        horas_aprobaciones: S.answers.apr,
-        horas_reuniones: S.answers.reu,
-        pct_consultas_equipo: S.answers.con,
-        horas_supervision: S.answers.ops,
-        horas_planificacion: S.answers.est,
-        pct_crecimiento: S.answers.cre
-      },
+      respuestas:S.answers,
       resultados: {
         potencial_anual: c.pA,
         potencial_mensual: c.pM,
@@ -794,7 +807,9 @@ function renderCharts(c) {
 
 function startFresh() {
   clearState();
-  S.answers={}; S.q=0; S.nombre=''; S.wa='';
+  S.answers={}; S.q=0; S.nombre=''; S.wa=''; S.email='';
+  S.sessionId=generarUUID();
+  saveState();
   renderQ();
   goTo('sq');
 }
@@ -805,6 +820,7 @@ function resumeSession() { renderQ(); goTo('sq'); }
   if (saved && Object.keys(saved.answers).length>0) {
     S.answers=saved.answers;
     S.q=saved.q;
+    S.sessionId=saved.sessionId||generarUUID();
     document.getElementById('resumeBanner').style.display='block';
   }
   renderQ();
